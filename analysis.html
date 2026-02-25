@@ -60,7 +60,38 @@
     </style>
 </head>
 
-<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex flex-col">
+<body
+    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex flex-col relative">
+
+    <!-- Settings Overlay -->
+    <div id="settings-overlay"
+        class="fixed inset-0 bg-background-dark/95 z-50 flex items-center justify-center p-6 hidden">
+        <div
+            class="bg-surface-dark border border-slate-800 p-8 rounded-3xl max-w-md w-full shadow-2xl flex flex-col gap-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">settings</span>
+                    設定
+                </h2>
+                <button id="close-settings-btn" class="p-2 -mr-2 text-slate-400 hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label for="gas-url-input" class="text-sm text-slate-400 font-bold">Google Apps Script Web App
+                    URL</label>
+                <input type="text" id="gas-url-input"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white font-mono"
+                    placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+
+            <button id="save-settings-btn"
+                class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors active:scale-95 shadow-[0_0_20px_rgba(19,91,236,0.3)] mt-2">
+                保存して閉じる
+            </button>
+        </div>
+    </div>
     <!-- Top Bar: Status -->
     <header
         class="w-full px-6 py-4 flex items-center justify-between bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 z-10 sticky top-0">
@@ -178,15 +209,42 @@
 
     <!-- Script Area -->
     <script>
-        const GAS_URL = localStorage.getItem('gas_url') || "";
+        let GAS_URL = localStorage.getItem('gas_url') || "";
         const fetchBtn = document.getElementById('fetch-btn');
         const countMark = document.getElementById('mark-count');
         const countTotal = document.getElementById('total-count');
         const spinner = document.getElementById('loading-spinner');
 
+        // Settings elements
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const gasUrlInput = document.getElementById('gas-url-input');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+
         const canvas = document.getElementById('radar-canvas');
         const ctx = canvas.getContext('2d');
         const radarContainer = document.getElementById('radar-container');
+
+        // Settings actions
+        function openSettings() {
+            gasUrlInput.value = GAS_URL;
+            settingsOverlay.classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            settingsOverlay.classList.add('hidden');
+        }
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const val = gasUrlInput.value.trim();
+            if (val) {
+                GAS_URL = val;
+                localStorage.setItem('gas_url', GAS_URL);
+            }
+            closeSettings();
+        });
+
+        closeSettingsBtn.addEventListener('click', closeSettings);
 
         // Resize canvas to match container
         function resizeCanvas() {
@@ -198,11 +256,7 @@
 
         fetchBtn.addEventListener('click', () => {
             if (!GAS_URL) {
-                const url = window.prompt("Google Apps ScriptのWeb App URLを入力してください:", "");
-                if (url) {
-                    localStorage.setItem('gas_url', url);
-                    location.reload();
-                }
+                openSettings();
                 return;
             }
 
