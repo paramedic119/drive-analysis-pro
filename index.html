@@ -4,32 +4,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Drive Analysis Pro - G-Bowl Edition</title>
+    <title>Drive Analysis Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
         rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        'primary-dark': '#2563eb',
+                        'background-dark': '#020617',
+                        'surface-dark': '#0f172a',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            },
+            darkMode: 'class', // always dark in this version
+        }
+    </script>
     <style>
-        :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --surface-dark: #0f172a;
-            --background-dark: #020617;
-            --danger: #ef4444;
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .radar-bg {
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 70%, transparent 100%);
+        }
+
+        #g-ball {
+            transition: transform 0.1s cubic-bezier(0.17, 0.67, 0.83, 0.67);
         }
 
         body {
-            background-color: var(--background-dark);
+            background-color: #020617;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             color: #f8fafc;
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
             touch-action: none;
-        }
-
-        .glass {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .warning-flash {
@@ -47,140 +67,196 @@
                 box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
             }
         }
-
-        canvas {
-            touch-action: none;
-        }
     </style>
 </head>
 
-<body class="h-screen flex flex-col p-4 md:p-8">
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+    <!-- Header/Nav -->
+    <header class="w-full max-w-lg flex justify-between items-center mb-8">
+        <div class="flex flex-col">
+            <h1 class="text-2xl font-black bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
                 Drive Analysis Pro
             </h1>
-            <p id="status-label" class="text-xs text-slate-500 font-medium uppercase tracking-wider">Standby</p>
+            <p id="gps-status"
+                class="text-xs font-bold text-slate-500 flex items-center gap-1 uppercase tracking-tighter">
+                <span class="material-symbols-outlined text-[10px]">location_on</span>
+                GPS待機中...
+            </p>
         </div>
         <div id="recording-indicator"
-            class="flex items-center gap-2 px-3 py-1 rounded-full glass text-xs font-semibold text-slate-500 transition-all">
+            class="flex items-center gap-2 bg-slate-800 text-slate-500 px-4 py-2 rounded-full transition-all">
             <span class="w-2 h-2 rounded-full bg-current"></span>
-            <span id="duration-val">00:00:00</span>
+            <span id="duration-val" class="font-mono font-bold text-sm">00:00:00</span>
         </div>
     </header>
 
-    <!-- Visualizer Section -->
-    <section class="flex-1 flex flex-col items-center justify-center relative">
-        <div id="canvas-container"
-            class="relative w-full max-w-[400px] aspect-square rounded-full glass flex items-center justify-center overflow-hidden transition-colors duration-300 border-2 border-transparent">
-            <canvas id="g-canvas" class="w-full h-full"></canvas>
-
-            <!-- Center Crosshair -->
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-20">
-                <div class="w-full h-[1px] bg-slate-400"></div>
-                <div class="w-[1px] h-full bg-slate-400 absolute"></div>
+    <main class="w-full max-w-lg flex flex-col gap-6">
+        <!-- Status Panel -->
+        <div
+            class="bg-surface-dark border border-slate-800 rounded-3xl p-6 shadow-xl shadow-blue-500/5 relative overflow-hidden">
+            <div class="flex justify-between items-end mb-6 relative z-10">
+                <div>
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">ステータス</p>
+                    <p id="status-label" class="text-xl font-bold">待機中</p>
+                </div>
+                <div class="text-right">
+                    <span id="speed-val" class="text-5xl font-black tracking-tighter italic">0</span>
+                    <span class="text-sm font-bold text-slate-500 uppercase ml-1">km/h</span>
+                </div>
             </div>
 
-            <!-- Threshold Rings -->
-            <div class="absolute w-[40%] h-[40%] border border-slate-700/50 rounded-full pointer-events-none"></div>
-            <div class="absolute w-[60%] h-[60%] border border-slate-700/50 rounded-full pointer-events-none"></div>
-            <div class="absolute w-[80%] h-[80%] border border-white/10 rounded-full pointer-events-none"></div>
+            <!-- G-Radar Visualizer -->
+            <div id="radar-container"
+                class="relative aspect-square w-full rounded-full radar-bg border border-slate-800 flex items-center justify-center overflow-hidden mb-8 transition-colors duration-300 z-10">
+                <!-- Radar Rings -->
+                <div
+                    class="absolute w-[33%] h-[33%] border border-slate-700 rounded-full opacity-50 pointer-events-none">
+                </div>
+                <div
+                    class="absolute w-[66%] h-[66%] border border-slate-700 rounded-full opacity-50 pointer-events-none">
+                </div>
+
+                <!-- Crosshair -->
+                <div class="absolute w-full h-[1px] bg-slate-700 pointer-events-none"></div>
+                <div class="absolute h-full w-[1px] bg-slate-700 pointer-events-none"></div>
+
+                <!-- Axis Labels -->
+                <span class="absolute top-4 text-[10px] font-black text-slate-400 pointer-events-none">前</span>
+                <span class="absolute bottom-4 text-[10px] font-black text-slate-400 pointer-events-none">後</span>
+                <span class="absolute left-4 text-[10px] font-black text-slate-400 pointer-events-none">左</span>
+                <span class="absolute right-4 text-[10px] font-black text-slate-400 pointer-events-none">右</span>
+
+                <!-- G Ball -->
+                <div id="g-ball"
+                    class="relative z-10 w-12 h-12 bg-primary rounded-full shadow-2xl shadow-primary/50 flex items-center justify-center">
+                    <div class="w-3 h-3 bg-white/30 rounded-full blur-[2px] -mt-2 -ml-2"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 relative z-10">
+                <div class="bg-slate-800/50 p-4 rounded-2xl flex flex-col">
+                    <span class="text-[10px] font-black text-slate-500 uppercase mb-1">横G</span>
+                    <span id="lat-g-val" class="text-2xl font-black tracking-tighter">0.00g</span>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-2xl flex flex-col">
+                    <span class="text-[10px] font-black text-slate-500 uppercase mb-1">前後G</span>
+                    <span id="long-g-val" class="text-2xl font-black tracking-tighter">0.00g</span>
+                </div>
+            </div>
         </div>
 
-        <!-- Real-time Values -->
-        <div class="mt-8 grid grid-cols-2 gap-8 w-full max-w-[400px]">
-            <div class="text-center">
-                <span class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Lateral G</span>
-                <span id="lat-g-val" class="text-3xl font-mono font-bold text-white">0.00g</span>
+        <!-- Primary Actions -->
+        <div class="flex flex-col gap-4">
+            <div id="bad-ride-btn"
+                class="bg-rose-500 hover:bg-rose-600 active:scale-95 text-white p-6 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-2xl shadow-rose-500/20 transition-all group relative overflow-hidden cursor-pointer select-none">
+                <div
+                    class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform">
+                </div>
+                <span class="material-symbols-outlined text-4xl relative z-10">warning</span>
+                <span class="text-xl font-black uppercase tracking-tighter relative z-10">危険挙動を記録</span>
+                <p class="relative z-10 mt-2 text-xs text-rose-100 text-center max-w-[200px]">
+                    揺れや危険を感じた際にタップ
+                </p>
             </div>
-            <div class="text-center">
-                <span class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Longitudinal G</span>
-                <span id="long-g-val" class="text-3xl font-mono font-bold text-white">0.00g</span>
+            <div class="grid grid-cols-3 gap-3">
+                <button id="start-stop-btn"
+                    class="bg-surface-dark border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800 transition-colors active:scale-95">
+                    <span id="start-stop-icon"
+                        class="material-symbols-outlined text-emerald-500 text-2xl">play_circle</span>
+                    <span id="start-stop-text" class="text-xs font-bold">計測開始</span>
+                </button>
+                <button id="calibrate-btn"
+                    class="bg-surface-dark border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800 transition-colors active:scale-95">
+                    <span class="material-symbols-outlined text-amber-500 text-2xl">balance</span>
+                    <span class="text-xs font-bold">ゼロ点補正</span>
+                </button>
+                <button id="settings-btn"
+                    class="bg-surface-dark border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800 transition-colors active:scale-95">
+                    <span class="material-symbols-outlined text-slate-400 text-2xl">settings</span>
+                    <span class="text-xs font-bold">設定</span>
+                </button>
             </div>
         </div>
-    </section>
+    </main>
 
-    <!-- Commands -->
-    <footer class="mt-auto grid grid-cols-3 gap-4 pb-4">
-        <button id="calibrate-btn"
-            class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all">
-            <span class="material-symbols-outlined text-amber-400">balance</span>
-            <span class="text-[10px] font-bold uppercase">Calibrate</span>
-        </button>
-
-        <button id="start-stop-btn"
-            class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all">
-            <span id="start-stop-icon" class="material-symbols-outlined text-emerald-500 text-3xl">play_circle</span>
-            <span id="start-stop-text" class="text-[10px] font-bold uppercase">Start</span>
-        </button>
-
-        <button id="bad-ride-btn"
-            class="glass p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all">
-            <span class="material-symbols-outlined text-rose-500">warning</span>
-            <span class="text-[10px] font-bold uppercase">Bump!</span>
-        </button>
-    </footer>
-
-    <!-- Overlay for permissions -->
+    <!-- Permission / Permission Prompt -->
     <div id="permission-overlay" class="fixed inset-0 bg-background-dark/95 z-50 flex items-center justify-center p-6"
         style="display: none;">
         <div class="bg-surface-dark border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center">
-            <span class="material-symbols-outlined text-6xl text-blue-500 mb-6">sensors</span>
-            <h2 class="text-2xl font-bold mb-4">Sensor Access Required</h2>
-            <p class="text-slate-400 mb-8">救急車の安全運転支援のため、モーションセンサーと位置情報へのアクセスを許可してください。</p>
+            <span class="material-symbols-outlined text-6xl text-primary mb-6">sensors</span>
+            <h2 class="text-2xl font-bold mb-4">センサーへのアクセス許可</h2>
+            <p class="text-slate-400 mb-8 text-sm">運転品質を分析するため、モーションセンサーと位置情報へのアクセスを許可してください。</p>
             <button id="grant-btn"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95">アクセスを許可</button>
+                class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition-colors active:scale-95">アクセスを許可</button>
         </div>
     </div>
 
+    <!-- Script Area -->
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxf16vA2OFLhSxh5a1snngr9aV9MhL8sOtIlTxmIyNQFef3OwmqgrnzbAK2FfltsR5TmA/exec";
-
-        // State
+        let GAS_URL = localStorage.getItem('gas_url') || "";
         let isRecording = false;
         let startTime = null;
         let timerInterval = null;
         let logInterval = null;
-        let sessionData = [];
         let wakeLock = null;
 
-        // Sensor State
-        let currentSensors = {
-            accX: 0, accY: 0, accZ: 0,
-            lat: null, lon: null, speed: 0,
+        const badRideBtn = document.getElementById('bad-ride-btn');
+        const startStopBtn = document.getElementById('start-stop-btn');
+        const calibrateBtn = document.getElementById('calibrate-btn');
+        const overlay = document.getElementById('permission-overlay');
+        const grantBtn = document.getElementById('grant-btn');
+        const gBall = document.getElementById('g-ball');
+        const settingsBtn = document.getElementById('settings-btn');
+        const radarContainer = document.getElementById('radar-container');
+
+        let currentData = {
+            timestamp: null,
+            lat: null,
+            lon: null,
+            speed: 0,
+            accX: 0,
+            accY: 0,
+            accZ: 0,
             badRide: false
         };
+        let sessionData = [];
 
-        // LPF & Calibration
+        // LPF & Calibration variables
         let lpfBeta = 0.2; // スムージング係数
         let filteredAcc = { x: 0, y: 0, z: 0 };
         let offsetAcc = { x: 0, y: 0, z: 0 }; // キャリブレーション用
 
-        // Canvas Setup
-        const canvas = document.getElementById('g-canvas');
-        const ctx = canvas.getContext('2d');
-        const container = document.getElementById('canvas-container');
-        let ballPath = []; // 軌跡用
-        const MAX_TRAIL = 20;
+        // Initialize state
+        window.addEventListener('load', () => {
+            if (!GAS_URL) {
+                GAS_URL = window.prompt("Google Apps ScriptのWeb App URLを入力してください:", "https://script.google.com/macros/s/AKfycbxf16vA2OFLhSxh5a1snngr9aV9MhL8sOtIlTxmIyNQFef3OwmqgrnzbAK2FfltsR5TmA/exec");
+                if (GAS_URL) localStorage.setItem('gas_url', GAS_URL);
+            }
+        });
 
-        // DOM Elements
-        const startStopBtn = document.getElementById('start-stop-btn');
-        const calibrateBtn = document.getElementById('calibrate-btn');
-        const badRideBtn = document.getElementById('bad-ride-btn');
-        const overlay = document.getElementById('permission-overlay');
-        const grantBtn = document.getElementById('grant-btn');
+        settingsBtn.addEventListener('click', () => {
+            const newUrl = window.prompt("Webhook URLの変更:", GAS_URL);
+            if (newUrl) {
+                GAS_URL = newUrl;
+                localStorage.setItem('gas_url', GAS_URL);
+            }
+        });
 
-        // Resize Canvas
-        function resizeCanvas() {
-            const size = container.clientWidth;
-            canvas.width = size;
-            canvas.height = size;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        calibrateBtn.addEventListener('click', () => {
+            offsetAcc.x = currentData.accX;
+            offsetAcc.y = currentData.accY;
+            offsetAcc.z = currentData.accZ;
+            alert('基準値を補正しました。');
+        });
 
-        // Wake Lock
+        startStopBtn.addEventListener('click', () => {
+            if (!isRecording) {
+                overlay.style.display = 'flex';
+            } else {
+                stopSession();
+            }
+        });
+
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
@@ -189,104 +265,99 @@
             } catch (err) { console.error(`${err.name}, ${err.message}`); }
         }
 
-        // --- Core Logic ---
-
-        function calibrate() {
-            offsetAcc.x = currentSensors.accX;
-            offsetAcc.y = currentSensors.accY;
-            offsetAcc.z = currentSensors.accZ;
-            console.log("Calibrated:", offsetAcc);
-        }
-
-        function updateSensors(x, y, z) {
-            // Apply Calibration
-            const rawX = x - offsetAcc.x;
-            const rawY = y - offsetAcc.y;
-            const rawZ = z - offsetAcc.z;
-
-            // Apply LPF
-            filteredAcc.x = filteredAcc.x * (1 - lpfBeta) + rawX * lpfBeta;
-            filteredAcc.y = filteredAcc.y * (1 - lpfBeta) + rawY * lpfBeta;
-            filteredAcc.z = filteredAcc.z * (1 - lpfBeta) + rawZ * lpfBeta;
-        }
-
-        // Drawing Loop
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = canvas.width * 0.45;
-
-            // Convert Acc to G (assume 9.8 m/s^2)
-            const latG = -filteredAcc.x / 9.8;
-            const longG = -filteredAcc.y / 9.8;
-            const compositeG = Math.sqrt(latG * latG + longG * longG);
-
-            // Mapping: 0.5G = Edge of the circle
-            const scale = radius / 0.5;
-            const ballX = centerX + latG * scale;
-            const ballY = centerY + longG * scale;
-
-            // Clamping to visual boundary
-            const dist = Math.sqrt(Math.pow(ballX - centerX, 2) + Math.pow(ballY - centerY, 2));
-            let finalX = ballX;
-            let finalY = ballY;
-            if (dist > radius) {
-                const angle = Math.atan2(ballY - centerY, ballX - centerX);
-                finalX = centerX + Math.cos(angle) * radius;
-                finalY = centerY + Math.sin(angle) * radius;
+        grantBtn.addEventListener('click', async () => {
+            // Motion Permission (iOS)
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceMotionEvent.requestPermission();
+                    if (permission !== 'granted') {
+                        alert('モーションセンサーへのアクセスが拒否されました。');
+                        return;
+                    }
+                } catch (e) { console.error(e); }
             }
 
-            // Update UI values
-            const latGLabel = document.getElementById('lat-g-val');
-            const longGLabel = document.getElementById('long-g-val');
-            if (latGLabel) latGLabel.textContent = latG.toFixed(2) + 'g';
-            if (longGLabel) longGLabel.textContent = longG.toFixed(2) + 'g';
+            // Location Permission
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    currentData.lat = pos.coords.latitude;
+                    currentData.lon = pos.coords.longitude;
+                    currentData.speed = (pos.coords.speed || 0) * 3.6;
 
-            // Warning Effect
-            if (compositeG > 0.3) {
-                container.classList.add('warning-flash', 'border-rose-500');
-                container.classList.remove('border-amber-500');
-            } else if (compositeG > 0.2) {
-                container.classList.remove('warning-flash', 'border-rose-500');
-                container.classList.add('border-amber-500');
-            } else {
-                container.classList.remove('warning-flash', 'border-rose-500', 'border-amber-500');
-            }
+                    document.getElementById('speed-val').textContent = Math.round(currentData.speed);
+                    document.getElementById('gps-status').textContent = `精度: ${Math.round(pos.coords.accuracy || 0)}m`;
+                    document.getElementById('gps-status').classList.remove('text-slate-500', 'text-red-500');
+                    document.getElementById('gps-status').classList.add('text-primary');
+                },
+                (err) => {
+                    console.error(err);
+                    document.getElementById('gps-status').textContent = "GPS信号ロスト";
+                    document.getElementById('gps-status').classList.remove('text-slate-500', 'text-primary');
+                    document.getElementById('gps-status').classList.add('text-red-500');
+                },
+                { enableHighAccuracy: true }
+            );
 
-            // Update Trail
-            ballPath.push({ x: finalX, y: finalY });
-            if (ballPath.length > MAX_TRAIL) ballPath.shift();
+            // Start Motion Listener
+            window.addEventListener('devicemotion', (event) => {
+                const acc = event.acceleration || event.accelerationIncludingGravity;
+                if (!acc) return;
 
-            // Draw Trail
-            ctx.beginPath();
-            ctx.setLineDash([2, 4]);
-            ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
-            ctx.lineWidth = 2;
-            for (let i = 0; i < ballPath.length; i++) {
-                if (i === 0) ctx.moveTo(ballPath[i].x, ballPath[i].y);
-                else ctx.lineTo(ballPath[i].x, ballPath[i].y);
-            }
-            ctx.stroke();
-            ctx.setLineDash([]);
+                currentData.accX = acc.x || 0;
+                currentData.accY = acc.y || 0;
+                currentData.accZ = acc.z || 0;
 
-            // Draw Ball
-            const gradient = ctx.createRadialGradient(finalX, finalY, 0, finalX, finalY, 12);
-            gradient.addColorStop(0, '#60a5fa');
-            gradient.addColorStop(1, '#1d4ed8');
-            ctx.fillStyle = gradient;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
-            ctx.beginPath();
-            ctx.arc(finalX, finalY, 12, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+                // Apply Calibration
+                const rawX = currentData.accX - offsetAcc.x;
+                const rawY = currentData.accY - offsetAcc.y;
+                const rawZ = currentData.accZ - offsetAcc.z;
 
-            requestAnimationFrame(draw);
-        }
+                // Apply LPF
+                filteredAcc.x = filteredAcc.x * (1 - lpfBeta) + rawX * lpfBeta;
+                filteredAcc.y = filteredAcc.y * (1 - lpfBeta) + rawY * lpfBeta;
+                filteredAcc.z = filteredAcc.z * (1 - lpfBeta) + rawZ * lpfBeta;
 
-        // --- Session Handlers ---
+                // Update UI Display (G-force approx)
+                const latG = (filteredAcc.x / 9.8);
+                const longG = (filteredAcc.y / 9.8);
+                const compositeG = Math.sqrt(latG * latG + longG * longG);
+
+                document.getElementById('lat-g-val').textContent = latG.toFixed(2) + 'g';
+                document.getElementById('long-g-val').textContent = longG.toFixed(2) + 'g';
+
+                // Move the G-Ball (Assume 0.5g maps to radar edge, radar is approx. 300px wide, max radius 150px)
+                // If radar ring is 100%, 0.5G is edge. So 1G = 300px transform
+                const scale = 300; // px per G
+                const tx = -latG * scale;
+                const ty = -longG * scale;
+
+                // Clamp to radar boundaries
+                const maxRadius = radarContainer.clientWidth / 2 - 24; // 24 is ball radius approximately
+                const dist = Math.sqrt(tx * tx + ty * ty);
+                let finalTx = tx;
+                let finalTy = ty;
+                if (dist > maxRadius) {
+                    finalTx = tx * (maxRadius / dist);
+                    finalTy = ty * (maxRadius / dist);
+                }
+
+                gBall.style.transform = `translate(${finalTx}px, ${finalTy}px)`;
+
+                // Warning Effect
+                if (compositeG > 0.3) {
+                    radarContainer.classList.add('warning-flash', 'border-rose-500');
+                    radarContainer.classList.remove('border-amber-500');
+                } else if (compositeG > 0.2) {
+                    radarContainer.classList.remove('warning-flash', 'border-rose-500');
+                    radarContainer.classList.add('border-amber-500');
+                } else {
+                    radarContainer.classList.remove('warning-flash', 'border-rose-500', 'border-amber-500');
+                }
+            });
+
+            overlay.style.display = 'none';
+            startSession();
+        });
 
         function startSession() {
             isRecording = true;
@@ -294,12 +365,15 @@
             sessionData = [];
             requestWakeLock();
 
-            document.getElementById('recording-indicator').classList.add('text-emerald-500', 'animate-pulse');
-            document.getElementById('status-label').textContent = "Recording";
+            // UI Updates
+            document.getElementById('recording-indicator').classList.remove('bg-slate-800', 'text-slate-500');
+            document.getElementById('recording-indicator').classList.add('bg-emerald-500/20', 'text-emerald-500', 'animate-pulse');
+            document.getElementById('status-label').textContent = "計測中";
             document.getElementById('status-label').classList.add('text-emerald-500');
+
             document.getElementById('start-stop-icon').textContent = "stop_circle";
             document.getElementById('start-stop-icon').classList.replace('text-emerald-500', 'text-rose-500');
-            document.getElementById('start-stop-text').textContent = "Stop";
+            document.getElementById('start-stop-text').textContent = "計測停止";
 
             // Timer
             timerInterval = setInterval(() => {
@@ -310,28 +384,8 @@
                 document.getElementById('duration-val').textContent = `${h}:${m}:${s}`;
             }, 1000);
 
-            // Log Loop (1s as requested)
-            logInterval = setInterval(() => {
-                if (isRecording) {
-                    const latG = -filteredAcc.x / 9.8;
-                    const longG = -filteredAcc.y / 9.8;
-                    const compositeG = Math.sqrt(latG * latG + longG * longG);
-
-                    sessionData.push({
-                        timestamp: new Date().toISOString(),
-                        latG: latG.toFixed(3),
-                        longG: longG.toFixed(3),
-                        compositeG: compositeG.toFixed(3),
-                        speed: currentSensors.speed,
-                        badRide: currentSensors.badRide ? "YES" : ""
-                    });
-
-                    // Reset single burst marker
-                    if (currentSensors.badRide) {
-                        setTimeout(() => currentSensors.badRide = false, 500);
-                    }
-                }
-            }, 1000);
+            // Log Loop
+            startLogLoop();
         }
 
         async function stopSession() {
@@ -343,35 +397,53 @@
                 wakeLock = null;
             }
 
-            // UI Reset
-            document.getElementById('recording-indicator').classList.remove('text-emerald-500', 'animate-pulse');
-            document.getElementById('status-label').textContent = "Standby";
+            sendBatchToGAS();
+
+            document.getElementById('recording-indicator').classList.remove('bg-emerald-500/20', 'text-emerald-500', 'animate-pulse');
+            document.getElementById('recording-indicator').classList.add('bg-slate-800', 'text-slate-500');
+            document.getElementById('status-label').textContent = "待機中";
             document.getElementById('status-label').classList.remove('text-emerald-500');
+
             document.getElementById('start-stop-icon').textContent = "play_circle";
             document.getElementById('start-stop-icon').classList.replace('text-rose-500', 'text-emerald-500');
-            document.getElementById('start-stop-text').textContent = "Start";
+            document.getElementById('start-stop-text').textContent = "計測開始";
+        }
 
-            if (sessionData.length > 0) {
-                // Background send to GAS
-                try {
-                    await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(sessionData)
-                    });
-                    alert(`Session saved! (${sessionData.length} records)`);
-                } catch (e) {
-                    console.error("GAS failed", e);
-                    // Export CSV as fallback
-                    exportCSV();
-                }
+        badRideBtn.addEventListener('click', () => {
+            if (!isRecording) return;
+
+            currentData.badRide = true;
+            // Visual Feedback
+            badRideBtn.classList.add('scale-95');
+            setTimeout(() => badRideBtn.classList.remove('scale-95'), 100);
+
+            // Reset flag after brief period
+            setTimeout(() => currentData.badRide = false, 500);
+        });
+
+        async function sendBatchToGAS() {
+            if (!GAS_URL || sessionData.length === 0) return;
+
+            const dataToSend = [...sessionData];
+            sessionData = [];
+
+            try {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToSend)
+                });
+                alert(`記録データを送信しました (${dataToSend.length}件)`);
+            } catch (e) {
+                console.error("GAS Send failed", e);
+                exportCSV(dataToSend);
             }
         }
 
-        function exportCSV() {
+        function exportCSV(data) {
             const header = "Timestamp,LatG,LongG,CompositeG,Speed,Marker\n";
-            const rows = sessionData.map(d => `${d.timestamp},${d.latG},${d.longG},${d.compositeG},${d.speed},${d.badRide}`).join("\n");
+            const rows = data.map(d => `${d.timestamp},${d.latG},${d.longG},${d.compositeG},${d.speed},${d.badRide}`).join("\n");
             const blob = new Blob([header + rows], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -383,62 +455,24 @@
             document.body.removeChild(a);
         }
 
-        // --- Event Listeners ---
+        function startLogLoop() {
+            logInterval = setInterval(() => {
+                if (isRecording) {
+                    const latG = (filteredAcc.x / 9.8);
+                    const longG = (filteredAcc.y / 9.8);
+                    const compositeG = Math.sqrt(latG * latG + longG * longG);
 
-        startStopBtn.addEventListener('click', () => {
-            if (!isRecording) {
-                overlay.style.display = 'flex';
-            } else {
-                stopSession();
-            }
-        });
-
-        calibrateBtn.addEventListener('click', calibrate);
-
-        badRideBtn.addEventListener('click', () => {
-            if (!isRecording) return;
-            currentSensors.badRide = true;
-            // Visual feedback
-            badRideBtn.classList.add('bg-rose-500/20');
-            setTimeout(() => badRideBtn.classList.remove('bg-rose-500/20'), 300);
-        });
-
-        grantBtn.addEventListener('click', async () => {
-            // Geolocation
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    currentSensors.lat = pos.coords.latitude;
-                    currentSensors.lon = pos.coords.longitude;
-                    currentSensors.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                },
-                (err) => console.error(err),
-                { enableHighAccuracy: true }
-            );
-
-            // Motion (iOS 13+)
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceMotionEvent.requestPermission();
-                    if (permission !== 'granted') return alert('Permission denied');
-                } catch (e) { console.error(e); }
-            }
-
-            window.addEventListener('devicemotion', (e) => {
-                const acc = e.acceleration || e.accelerationIncludingGravity;
-                if (acc) {
-                    currentSensors.accX = acc.x || 0;
-                    currentSensors.accY = acc.y || 0;
-                    currentSensors.accZ = acc.z || 0;
-                    updateSensors(currentSensors.accX, currentSensors.accY, currentSensors.accZ);
+                    sessionData.push({
+                        timestamp: new Date().toISOString(),
+                        latG: latG.toFixed(3),
+                        longG: longG.toFixed(3),
+                        compositeG: compositeG.toFixed(3),
+                        speed: currentData.speed,
+                        badRide: currentData.badRide ? "YES" : ""
+                    });
                 }
-            });
-
-            overlay.style.display = 'none';
-            startSession();
-        });
-
-        // Initialize display
-        requestAnimationFrame(draw);
+            }, 1000); // 1秒おき
+        }
     </script>
 </body>
 
