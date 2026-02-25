@@ -187,10 +187,10 @@
                         <div class="w-2 h-2 bg-white/50 rounded-full blur-[1px] -mt-2 -ml-2"></div>
                     </div>
                     <!-- Axis Labels -->
-                    <span class="absolute top-4 font-mono text-xs text-slate-400 font-bold">前 +1.0g</span>
-                    <span class="absolute bottom-4 font-mono text-xs text-slate-400 font-bold">後 -1.0g</span>
-                    <span class="absolute left-4 font-mono text-xs text-slate-400 font-bold">左 1.0g</span>
-                    <span class="absolute right-4 font-mono text-xs text-slate-400 font-bold">右 1.0g</span>
+                    <span class="absolute top-4 font-mono text-xs text-slate-400 font-bold">前 +0.4g</span>
+                    <span class="absolute bottom-4 font-mono text-xs text-slate-400 font-bold">後 -0.4g</span>
+                    <span class="absolute left-4 font-mono text-xs text-slate-400 font-bold">左 0.4g</span>
+                    <span class="absolute right-4 font-mono text-xs text-slate-400 font-bold">右 0.4g</span>
                 </div>
             </div>
         </div>
@@ -446,9 +446,9 @@
                 // Map G to radar dimensions.
                 // container is relative, sizes adapt. Let's use max transform limits
                 const radarWidth = radarContainer.clientWidth;
-                // Assuming max scale is 1.0G = half width
+                // Assuming max scale is 0.4G = half width
                 const maxRange = radarWidth / 2 - 16; /* 16 is half the ball size width */
-                const scale = maxRange / 1.0;
+                const scale = maxRange / 0.4;
 
                 const tx = -latG * scale;
                 const ty = -longG * scale;
