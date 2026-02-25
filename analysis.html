@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html class="dark" lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <title>Drive Analysis Pro - 解析</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "primary-dark": "#0b3db0",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "surface-dark": "#1a2233",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .radar-grid {
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        body {
+            /* Fallback for browsers that don't support dVh */
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        #radar-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 15;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex flex-col">
+    <!-- Top Bar: Status -->
+    <header
+        class="w-full px-6 py-4 flex items-center justify-between bg-surface-light dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 z-10 sticky top-0">
+        <div class="flex items-center gap-3">
+            <a href="index.html"
+                class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-500/20 text-slate-500 hover:bg-slate-500/30 transition-colors">
+                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+            </a>
+            <div class="flex flex-col">
+                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">戻る</span>
+            </div>
+        </div>
+        <div class="flex-1 text-center">
+            <h1 class="text-lg font-bold tracking-tight">ドライブ解析 (蓄積データ)</h1>
+        </div>
+        <div class="flex items-center gap-3 opacity-0">
+            <!-- Spacer to balance header -->
+            <div class="w-8 h-8"></div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col gap-6 p-4 md:p-6">
+
+        <!-- Controls and Stats -->
+        <div
+            class="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-6 items-center justify-between">
+            <div class="flex flex-col gap-2 w-full md:w-auto">
+                <h2 class="text-lg font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-2xl">cloud_sync</span>
+                    クラウドデータ取得
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">
+                    Google Apps Scriptから保存済みのデータを取得し、マークされた危険挙動箇所をプロットします。
+                </p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <div class="flex flex-col items-center bg-slate-50 dark:bg-[#151b26] p-3 rounded-xl min-w-[120px]">
+                    <span class="text-xs text-slate-500 uppercase font-bold">マーク数</span>
+                    <span id="mark-count" class="text-xl font-mono font-bold text-rose-500">-</span>
+                </div>
+                <div class="flex flex-col items-center bg-slate-50 dark:bg-[#151b26] p-3 rounded-xl min-w-[120px]">
+                    <span class="text-xs text-slate-500 uppercase font-bold">総データ数</span>
+                    <span id="total-count" class="text-xl font-mono font-bold text-slate-300">-</span>
+                </div>
+
+                <button id="fetch-btn"
+                    class="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-xl transition-colors active:scale-95 shadow-[0_0_15px_rgba(19,91,236,0.3)] flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">download</span>
+                    <span>データ取得</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- G-Force Visualization Plot -->
+        <div
+            class="flex-1 min-h-[400px] bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between z-10 mb-4">
+                <h2 class="text-lg font-bold border-l-4 border-rose-500 pl-3">マーク分布 (0.4Gスケール)</h2>
+                <div id="loading-spinner" class="hidden">
+                    <span class="material-symbols-outlined animate-spin text-slate-400">sync</span>
+                </div>
+            </div>
+
+            <!-- Radar Container -->
+            <div id="radar-container"
+                class="flex-1 relative flex items-center justify-center radar-grid rounded-xl bg-slate-50 dark:bg-[#151b26] overflow-hidden">
+                <!-- Concentric Circles -->
+                <div class="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                    <div class="w-3/4 h-3/4 rounded-full border border-slate-400 dark:border-slate-500"></div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                    <div class="w-1/2 h-1/2 rounded-full border border-slate-400 dark:border-slate-500"></div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                    <div class="w-full h-px bg-slate-400 dark:bg-slate-500"></div>
+                    <div class="h-full w-px bg-slate-400 dark:bg-slate-500 absolute"></div>
+                </div>
+
+                <!-- Canvas for plotting points -->
+                <canvas id="radar-canvas"></canvas>
+
+                <!-- Axis Labels -->
+                <span class="absolute top-4 font-mono text-xs text-slate-400 font-bold">前 +0.4g</span>
+                <span class="absolute bottom-4 font-mono text-xs text-slate-400 font-bold">後 -0.4g</span>
+                <span class="absolute left-4 font-mono text-xs text-slate-400 font-bold">左 0.4g</span>
+                <span class="absolute right-4 font-mono text-xs text-slate-400 font-bold">右 0.4g</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav
+        class="bg-surface-light dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 px-6 pb-6 pt-3 flex justify-around mt-auto">
+        <a href="index.html" class="flex flex-col items-center gap-1 group">
+            <div class="p-1 rounded-full group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                <span class="material-symbols-outlined text-slate-400 text-[24px]">speed</span>
+            </div>
+            <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">モニター</span>
+        </a>
+        <a href="analysis.html" class="flex flex-col items-center gap-1 group">
+            <div class="p-1 rounded-full bg-primary/10 transition-colors">
+                <span class="material-symbols-outlined text-primary text-[24px]">history</span>
+            </div>
+            <span class="text-[10px] font-bold text-primary uppercase tracking-wide">履歴</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 group" href="#">
+            <div class="p-1 rounded-full group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                <span class="material-symbols-outlined text-slate-400 text-[24px]">map</span>
+            </div>
+            <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">マップ</span>
+        </a>
+    </nav>
+
+    <!-- Script Area -->
+    <script>
+        const GAS_URL = localStorage.getItem('gas_url') || "";
+        const fetchBtn = document.getElementById('fetch-btn');
+        const countMark = document.getElementById('mark-count');
+        const countTotal = document.getElementById('total-count');
+        const spinner = document.getElementById('loading-spinner');
+
+        const canvas = document.getElementById('radar-canvas');
+        const ctx = canvas.getContext('2d');
+        const radarContainer = document.getElementById('radar-container');
+
+        // Resize canvas to match container
+        function resizeCanvas() {
+            canvas.width = radarContainer.clientWidth;
+            canvas.height = radarContainer.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        fetchBtn.addEventListener('click', () => {
+            if (!GAS_URL) {
+                const url = window.prompt("Google Apps ScriptのWeb App URLを入力してください:", "");
+                if (url) {
+                    localStorage.setItem('gas_url', url);
+                    location.reload();
+                }
+                return;
+            }
+
+            // UI Changes
+            fetchBtn.disabled = true;
+            fetchBtn.classList.add('opacity-50');
+            spinner.classList.remove('hidden');
+
+            const callbackName = 'gasCallback_' + Date.now();
+            window[callbackName] = function (data) {
+                try {
+                    countTotal.textContent = data.length;
+
+                    // Filter where Marker is YES
+                    const marks = data.filter(d => Boolean(d.badRide) || d.badRide === "YES");
+                    countMark.textContent = marks.length;
+
+                    plotData(marks);
+                } catch (err) {
+                    console.error("Parse error", err);
+                } finally {
+                    cleanup();
+                }
+            };
+
+            const script = document.createElement('script');
+            script.onerror = function () {
+                alert("データの取得に失敗しました。URLが正しいか、GAS側でdoGetが正しくデプロイされているか確認してください。");
+                cleanup();
+            };
+
+            function cleanup() {
+                fetchBtn.disabled = false;
+                fetchBtn.classList.remove('opacity-50');
+                spinner.classList.add('hidden');
+                delete window[callbackName];
+                script.remove();
+            }
+
+            const sep = GAS_URL.includes('?') ? '&' : '?';
+            script.src = `${GAS_URL}${sep}callback=${callbackName}`;
+            document.body.appendChild(script);
+        });
+
+        function plotData(marks) {
+            // Clear previous plots
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // 0.4G scale logic matching index.html
+            // maxRange covers 0.4G relative to half radar width minus bit of padding
+            const maxRange = (canvas.width / 2) - 16;
+            const scale = maxRange / 0.4;
+
+            marks.forEach(point => {
+                const latG = typeof point.latG === 'number' ? point.latG : parseFloat(point.latG) || 0;
+                const longG = typeof point.longG === 'number' ? point.longG : parseFloat(point.longG) || 0;
+
+                // tx negative for left, positive for right
+                const tx = -latG * scale;
+                const ty = -longG * scale;
+
+                // Clamp visually inside the circle just in case
+                const dist = Math.sqrt(tx * tx + ty * ty);
+                let finalTx = tx;
+                let finalTy = ty;
+                if (dist > maxRange) {
+                    finalTx = tx * (maxRange / dist);
+                    finalTy = ty * (maxRange / dist);
+                }
+
+                // Draw point
+                ctx.beginPath();
+                ctx.arc(cx + finalTx, cy + finalTy, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(244, 63, 94, 0.8)'; // rose-500 with opacity
+                ctx.fill();
+
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.stroke();
+            });
+        }
+    </script>
+</body>
+
+</html>

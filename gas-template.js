@@ -16,13 +16,11 @@ function doPost(e) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow([
       "Timestamp",
-      "Latitude",
-      "Longitude",
-      "Speed (km/h)",
-      "Acc X",
-      "Acc Y",
-      "Acc Z",
-      "Bad Ride Event"
+      "LatG",
+      "LongG",
+      "CompositeG",
+      "Speed",
+      "Marker"
     ]);
   }
 
@@ -32,13 +30,11 @@ function doPost(e) {
 
   const values = rows.map(row => [
     row.timestamp,
-    row.lat,
-    row.lon,
+    row.latG,
+    row.longG,
+    row.compositeG,
     row.speed,
-    row.accX,
-    row.accY,
-    row.accZ,
-    row.badRide ? "YES" : ""
+    row.badRide
   ]);
 
   if (values.length > 0) {
@@ -46,4 +42,42 @@ function doPost(e) {
   }
 
   return ContentService.createTextOutput("Success");
+}
+
+function doGet(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow <= 1) {
+    // No data yet
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Get all data except header
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 6);
+  const values = dataRange.getValues();
+
+  // Convert to JSON
+  const jsonArray = values.map(row => {
+    return {
+      timestamp: row[0],
+      latG: parseFloat(row[1]) || 0,
+      longG: parseFloat(row[2]) || 0,
+      compositeG: parseFloat(row[3]) || 0,
+      speed: parseFloat(row[4]) || 0,
+      badRide: row[5] === "YES"
+    };
+  });
+
+  // Enable CORS by using JSONP if callback is provided
+  const callback = e.parameter.callback;
+  if (callback) {
+    const jsonp = callback + '(' + JSON.stringify(jsonArray) + ');';
+    return ContentService.createTextOutput(jsonp)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    return ContentService.createTextOutput(JSON.stringify(jsonArray))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
