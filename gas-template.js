@@ -11,32 +11,39 @@
 function doPost(e) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const data = JSON.parse(e.postData.contents);
-  
+
   // シートが空の場合、ヘッダーを作成
   if (sheet.getLastRow() === 0) {
     sheet.appendRow([
-      "Timestamp", 
-      "Latitude", 
-      "Longitude", 
-      "Speed (km/h)", 
-      "Acc X", 
-      "Acc Y", 
-      "Acc Z", 
+      "Timestamp",
+      "Latitude",
+      "Longitude",
+      "Speed (km/h)",
+      "Acc X",
+      "Acc Y",
+      "Acc Z",
       "Bad Ride Event"
     ]);
   }
-  
+
   // データの追加
-  sheet.appendRow([
-    data.timestamp,
-    data.lat,
-    data.lon,
-    data.speed,
-    data.accX,
-    data.accY,
-    data.accZ,
-    data.badRide ? "YES" : ""
+  const isArray = Array.isArray(data);
+  const rows = isArray ? data : [data];
+
+  const values = rows.map(row => [
+    row.timestamp,
+    row.lat,
+    row.lon,
+    row.speed,
+    row.accX,
+    row.accY,
+    row.accZ,
+    row.badRide ? "YES" : ""
   ]);
-  
+
+  if (values.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, values.length, values[0].length).setValues(values);
+  }
+
   return ContentService.createTextOutput("Success");
 }
