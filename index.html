@@ -199,29 +199,36 @@
         <!-- Right Column: Controls -->
         <div class="w-full lg:w-1/3 flex flex-col gap-6">
             <!-- Large Evaluation Button Section -->
-            <button id="bad-ride-btn"
-                class="flex-1 bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center justify-center relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer">
+            <button id="bad-ride-btn" style="touch-action: none;"
+                class="flex-1 bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center justify-center relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer select-none">
                 <!-- Background glow for context -->
                 <div
-                    class="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#151b26] dark:to-[#1a2233] opacity-50">
+                    class="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#151b26] dark:to-[#1a2233] opacity-50 pointer-events-none">
                 </div>
 
-                <h3 class="relative z-10 text-lg font-medium mb-8 text-center text-slate-600 dark:text-slate-300">危険挙動記録
+                <h3
+                    class="relative z-10 text-lg font-medium mb-8 text-center text-slate-600 dark:text-slate-300 pointer-events-none">
+                    危険挙動記録
                 </h3>
 
                 <!-- The Button -->
                 <div
-                    class="relative z-10 w-48 h-48 rounded-full bg-gradient-to-b from-rose-500 to-rose-700 shadow-[0_10px_30px_-10px_rgba(225,29,72,0.6)] flex flex-col items-center justify-center group-active:shadow-[0_0_50px_rgba(225,29,72,0.5)] border-4 border-[#1a2b4b] dark:border-[#1e293b] transition-all">
+                    class="relative z-10 w-48 h-48 rounded-full bg-gradient-to-b from-rose-500 to-rose-700 shadow-[0_10px_30px_-10px_rgba(225,29,72,0.6)] flex flex-col items-center justify-center border-4 border-[#1a2b4b] dark:border-[#1e293b] transition-all pointer-events-none">
                     <!-- Inner Ripple Effects -->
-                    <span class="absolute inset-0 rounded-full border border-white/20 scale-110 animate-pulse"></span>
-                    <span class="absolute inset-0 rounded-full border border-white/10 scale-125"></span>
+                    <span
+                        class="absolute inset-0 rounded-full border border-white/20 scale-110 animate-pulse pointer-events-none"></span>
+                    <span
+                        class="absolute inset-0 rounded-full border border-white/10 scale-125 pointer-events-none"></span>
 
-                    <span class="material-symbols-outlined text-white text-[48px] mb-2 drop-shadow-md">warning</span>
-                    <span class="text-white font-bold text-xl tracking-wide uppercase drop-shadow-md">記録</span>
+                    <span
+                        class="material-symbols-outlined text-white text-[48px] mb-2 drop-shadow-md pointer-events-none">warning</span>
+                    <span
+                        class="text-white font-bold text-2xl tracking-wide uppercase drop-shadow-md pointer-events-none">マーク</span>
                 </div>
 
-                <p class="relative z-10 mt-8 text-sm text-slate-500 dark:text-slate-400 text-center max-w-[200px]">
-                    揺れや危険を感じた際にタップして箇所を記録します。
+                <p
+                    class="relative z-10 mt-8 text-sm text-slate-500 dark:text-slate-400 text-center max-w-[200px] pointer-events-none">
+                    乗り心地が悪いと感じている間、<br>押し続けてください。
                 </p>
             </button>
 
@@ -534,8 +541,9 @@
             startStopText.textContent = "計測開始";
         }
 
-        badRideBtn.addEventListener('click', () => {
+        const handleMarkDown = (e) => {
             if (!isRecording) return;
+            if (e.cancelable) e.preventDefault(); // prevents default scroll/touch behavior
 
             currentData.badRide = true;
 
@@ -544,12 +552,31 @@
             innerDiv.classList.replace('from-rose-500', 'from-amber-500');
             innerDiv.classList.replace('to-rose-700', 'to-amber-700');
 
-            setTimeout(() => {
-                innerDiv.classList.replace('from-amber-500', 'from-rose-500');
-                innerDiv.classList.replace('to-amber-700', 'to-rose-700');
-                currentData.badRide = false;
-            }, 500);
-        });
+            // Show pressed effect on shadow
+            innerDiv.classList.replace('shadow-[0_10px_30px_-10px_rgba(225,29,72,0.6)]', 'shadow-[0_0_50px_rgba(245,158,11,0.5)]');
+        };
+
+        const handleMarkUp = (e) => {
+            if (!currentData.badRide) return;
+            if (e && e.cancelable) e.preventDefault();
+
+            currentData.badRide = false;
+
+            // Revert visual feedback
+            const innerDiv = badRideBtn.querySelector('div.bg-gradient-to-b');
+            innerDiv.classList.replace('from-amber-500', 'from-rose-500');
+            innerDiv.classList.replace('to-amber-700', 'to-rose-700');
+            innerDiv.classList.replace('shadow-[0_0_50px_rgba(245,158,11,0.5)]', 'shadow-[0_10px_30px_-10px_rgba(225,29,72,0.6)]');
+        };
+
+        // Support touch and mouse for continuous holding
+        badRideBtn.addEventListener('touchstart', handleMarkDown, { passive: false });
+        badRideBtn.addEventListener('mousedown', handleMarkDown);
+
+        badRideBtn.addEventListener('touchend', handleMarkUp);
+        badRideBtn.addEventListener('touchcancel', handleMarkUp);
+        badRideBtn.addEventListener('mouseup', handleMarkUp);
+        badRideBtn.addEventListener('mouseleave', handleMarkUp);
 
         async function sendBatchToGAS() {
             if (!GAS_URL || sessionData.length === 0) return;
